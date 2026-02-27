@@ -5,12 +5,14 @@ from __future__ import annotations
 import hashlib
 import io
 import logging
+import urllib.error
 
 from pretrained_dpa import cli
 
 MODEL_NAME = "DPA-3.2-5M"
 MODEL_URL = "https://example.com/DPA-3.2-5M.pt"
 MODEL_FILENAME = "DPA-3.2-5M.pt"
+HF_MODEL_URL = "https://huggingface.co/deepmodelingcommunity/DPA-3.2-5M/resolve/main/DPA-3.2-5M.pt?download=true"
 
 
 class ResponseOK:
@@ -47,11 +49,11 @@ class ResponseFail:
         """Exit context manager without swallowing errors."""
 
 
-def _model_map_with_hash(sha256: str) -> dict[str, dict[str, str]]:
+def _model_map_with_hash(sha256: str, *, url: str = MODEL_URL) -> dict[str, dict[str, str]]:
     """Create a predictable model mapping for tests."""
     return {
         MODEL_NAME: {
-            "url": MODEL_URL,
+            "url": url,
             "filename": MODEL_FILENAME,
             "sha256": sha256,
         },
@@ -96,6 +98,7 @@ def test_download_existing_model_skips_download(monkeypatch, tmp_path, caplog) -
         "_load_model_map",
         lambda: _model_map_with_hash(hashlib.sha256(payload).hexdigest()),
     )
+    monkeypatch.setattr(cli, "_select_download_url", lambda _url: MODEL_URL)
 
     with caplog.at_level(logging.INFO):
         code = cli.download_model(MODEL_NAME)
@@ -117,6 +120,7 @@ def test_download_model_success(monkeypatch, tmp_path, caplog) -> None:
         "_load_model_map",
         lambda: _model_map_with_hash(hashlib.sha256(payload).hexdigest()),
     )
+    monkeypatch.setattr(cli, "_select_download_url", lambda _url: MODEL_URL)
 
     def fake_urlopen(url: str, timeout: int = 120) -> ResponseOK:
         """Return deterministic payload without network access."""
@@ -142,6 +146,7 @@ def test_download_model_bad_hash_is_removed(monkeypatch, tmp_path, caplog) -> No
     model_file = model_dir / MODEL_FILENAME
     monkeypatch.setattr(cli, "DEFAULT_CACHE_DIR", model_dir)
     monkeypatch.setattr(cli, "_load_model_map", lambda: _model_map_with_hash("0" * 64))
+    monkeypatch.setattr(cli, "_select_download_url", lambda _url: MODEL_URL)
 
     def fake_urlopen(_url: str, timeout: int = 120) -> ResponseOK:
         """Return deterministic payload without network access."""
@@ -174,6 +179,7 @@ def test_download_existing_bad_hash_triggers_redownload(monkeypatch, tmp_path, c
         "_load_model_map",
         lambda: _model_map_with_hash(hashlib.sha256(good_payload).hexdigest()),
     )
+    monkeypatch.setattr(cli, "_select_download_url", lambda _url: MODEL_URL)
 
     def fake_urlopen(_url: str, timeout: int = 120) -> ResponseOK:
         """Return deterministic payload without network access."""
@@ -203,6 +209,7 @@ def test_download_network_error_returns_one(monkeypatch, caplog, tmp_path) -> No
         "_load_model_map",
         lambda: _model_map_with_hash(hashlib.sha256(payload).hexdigest()),
     )
+    monkeypatch.setattr(cli, "_select_download_url", lambda _url: MODEL_URL)
 
     def fake_urlopen(_url: str, timeout: int = 120) -> ResponseFail:
         """Return failing response object."""
@@ -220,6 +227,65 @@ def test_download_network_error_returns_one(monkeypatch, caplog, tmp_path) -> No
     assert not part_path.exists()
 
 
+def test_download_uses_mirror_in_cn(monkeypatch, tmp_path, caplog) -> None:
+    """Download should use hf-mirror when country API reports CN."""
+    model_dir = tmp_path / "cache"
+    payload = b"mirror-model"
+    mirror_url = HF_MODEL_URL.replace(cli.HF_ORIGIN, cli.HF_MIRROR, 1)
+
+    monkeypatch.setattr(cli, "DEFAULT_CACHE_DIR", model_dir)
+    monkeypatch.setattr(
+        cli,
+        "_load_model_map",
+        lambda: _model_map_with_hash(hashlib.sha256(payload).hexdigest(), url=HF_MODEL_URL),
+    )
+
+    def fake_urlopen(url: str, timeout: int = 120) -> ResponseOK:
+        """Return country first, then model payload from selected URL."""
+        if url == cli.COUNTRY_API_URL:
+            assert timeout == 5
+            return ResponseOK(b"CN\n")
+
+        assert url == mirror_url
+        assert timeout == 120
+        return ResponseOK(payload)
+
+    monkeypatch.setattr(cli.urllib.request, "urlopen", fake_urlopen)
+
+    with caplog.at_level(logging.INFO):
+        code = cli.download_model(MODEL_NAME)
+
+    assert code == 0
+    assert "using mirror" in caplog.text
+
+
+def test_download_country_check_failure_falls_back_to_origin(monkeypatch, tmp_path) -> None:
+    """If country API fails, download should fall back to huggingface origin URL."""
+    model_dir = tmp_path / "cache"
+    payload = b"origin-model"
+
+    monkeypatch.setattr(cli, "DEFAULT_CACHE_DIR", model_dir)
+    monkeypatch.setattr(
+        cli,
+        "_load_model_map",
+        lambda: _model_map_with_hash(hashlib.sha256(payload).hexdigest(), url=HF_MODEL_URL),
+    )
+
+    def fake_urlopen(url: str, timeout: int = 120) -> ResponseOK:
+        """Raise on country API and serve payload from origin URL."""
+        if url == cli.COUNTRY_API_URL:
+            msg = "country-unreachable"
+            raise urllib.error.URLError(msg)
+
+        assert url == HF_MODEL_URL
+        assert timeout == 120
+        return ResponseOK(payload)
+
+    monkeypatch.setattr(cli.urllib.request, "urlopen", fake_urlopen)
+
+    assert cli.download_model(MODEL_NAME) == 0
+
+
 def test_main_download_success(monkeypatch, tmp_path) -> None:
     """Main should return zero when download subcommand succeeds."""
     model_dir = tmp_path / "cache"
@@ -231,6 +297,7 @@ def test_main_download_success(monkeypatch, tmp_path) -> None:
         "_load_model_map",
         lambda: _model_map_with_hash(hashlib.sha256(payload).hexdigest()),
     )
+    monkeypatch.setattr(cli, "_select_download_url", lambda _url: MODEL_URL)
 
     def fake_urlopen(_url: str, timeout: int = 120) -> ResponseOK:
         """Return deterministic payload without network access."""
