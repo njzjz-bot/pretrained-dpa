@@ -1,4 +1,4 @@
-"""A Python template (please revise this docstring)."""
+"""A Pretrained DPA (please revise this docstring)."""
 
 from __future__ import annotations
 

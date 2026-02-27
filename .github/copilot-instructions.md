@@ -1,6 +1,6 @@
-# Python Template Project
+# Pretrained DPA Project
 
-This is a Python template project for creating new Python packages quickly. It uses modern Python packaging practices with setuptools, setuptools_scm for version management, and comprehensive development tools.
+This is a Pretrained DPA project for creating new Python packages quickly. It uses modern Python packaging practices with setuptools, setuptools_scm for version management, and comprehensive development tools.
 
 Always reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.
 
@@ -60,7 +60,7 @@ Always use conventional commit format for both PR titles and commit messages whe
   - `python -m ruff format`
   - Takes ~0.03 seconds. NEVER CANCEL. Set timeout to 60+ seconds for safety.
 - Run type checking:
-  - `python -m mypy python_template`
+  - `python -m mypy pretrained_dpa`
   - Takes ~0.3 seconds. NEVER CANCEL. Set timeout to 60+ seconds for safety.
 
 ### Building
@@ -81,19 +81,19 @@ Always use conventional commit format for both PR titles and commit messages whe
 - Individual CI checks that must pass:
   - `python -m ruff check --fix`
   - `python -m ruff format`
-  - `python -m mypy python_template`
+  - `python -m mypy pretrained_dpa`
 
 ## Validation
 
 ### Always Run These Validation Steps After Making Changes
 
-1. **Basic functionality test**: `python -c "import python_template; print(python_template.__version__)"`
+1. **Basic functionality test**: `python -c "import pretrained_dpa; print(pretrained_dpa.__version__)"`
 2. **Run the test suite**: `python -m pytest --cov --cov-config pyproject.toml --cov-report term --cov-report xml`
 3. **Lint and format code**:
    - `python -m ruff check --fix`
    - `python -m ruff format`
-4. **Type checking**: `python -m mypy python_template`
-5. **Verify package contents**: `python -c "import python_template; print(dir(python_template))"`
+4. **Type checking**: `python -m mypy pretrained_dpa`
+5. **Verify package contents**: `python -c "import pretrained_dpa; print(dir(pretrained_dpa))"`
 
 _Note: If using uv with virtual environment, activate it first: `source .venv/bin/activate`_
 
@@ -111,9 +111,9 @@ When testing changes, follow these complete scenarios:
 
 **Scenario 1: Basic Package Functionality**
 
-1. `python -c "import python_template; print(python_template.__version__)"`
+1. `python -c "import pretrained_dpa; print(pretrained_dpa.__version__)"`
 2. Verify output shows a version like `0.1.dev2+g181c8dc78`
-3. `python -c "import python_template; print(dir(python_template))"`
+3. `python -c "import pretrained_dpa; print(dir(pretrained_dpa))"`
 4. Verify `__version__` and other expected attributes are present
 
 **Scenario 2: Code Quality and Testing**
@@ -122,16 +122,16 @@ When testing changes, follow these complete scenarios:
 2. Verify all tests pass and coverage report shows 100% for main package
 3. `python -m ruff check --fix`
 4. `python -m ruff format`
-5. `python -m mypy python_template`
+5. `python -m mypy pretrained_dpa`
 6. Verify no new issues in the main package (warnings about auto-generated files are OK)
 
 **Scenario 3: Making and Validating Changes**
 
-1. Make your code changes to files in `python_template/`
-2. Run basic functionality test: `python -c "import python_template; print(python_template.__version__)"`
+1. Make your code changes to files in `pretrained_dpa/`
+2. Run basic functionality test: `python -c "import pretrained_dpa; print(pretrained_dpa.__version__)"`
 3. Run tests: `python -m pytest --cov --cov-config pyproject.toml --cov-report term --cov-report xml`
 4. Fix linting: `python -m ruff check --fix && python -m ruff format`
-5. Type check: `python -m mypy python_template`
+5. Type check: `python -m mypy pretrained_dpa`
 6. Test any new functionality you added manually
 
 ## Common Tasks
@@ -148,7 +148,7 @@ When testing changes, follow these complete scenarios:
 │   └── workflows/
 │       ├── test.yaml      # CI testing workflow
 │       └── release.yaml   # Release automation
-├── python_template/       # Main package directory
+├── pretrained_dpa/       # Main package directory
 │   ├── __init__.py
 │   ├── __main__.py
 │   ├── _version.py        # Auto-generated version file
@@ -184,7 +184,7 @@ When testing changes, follow these complete scenarios:
 #### Package Import Test
 
 ```bash
-$ python -c "import python_template; print(python_template.__version__)"
+$ python -c "import pretrained_dpa; print(pretrained_dpa.__version__)"
 0.1.dev2+g181c8dc78
 ```
 
@@ -200,8 +200,8 @@ tests/test_version.py .                                                         
 ==================================================== tests coverage ====================================================
 Name                          Stmts   Miss  Cover
 -------------------------------------------------
-python_template/__init__.py       4      0   100%
-python_template/_version.py      13      0   100%
+pretrained_dpa/__init__.py       4      0   100%
+pretrained_dpa/_version.py      13      0   100%
 -------------------------------------------------
 TOTAL                            17      0   100%
 ```
@@ -221,7 +221,7 @@ drwxr-xr-x 3 runner docker 4096 .github
 -rw-r--r-- 1 runner docker  203 README.md
 -rw-r--r-- 1 runner docker  392 noxfile.py
 -rw-r--r-- 1 runner docker 1856 pyproject.toml
-drwxr-xr-x 2 runner docker 4096 python_template
+drwxr-xr-x 2 runner docker 4096 pretrained_dpa
 -rw-r--r-- 1 runner docker  115 renovate.json
 drwxr-xr-x 2 runner docker 4096 tests
 ```
@@ -238,4 +238,4 @@ Always run the equivalent local commands before committing:
 - `python -m pytest --cov --cov-config pyproject.toml --cov-report term --cov-report xml`
 - `python -m ruff check --fix`
 - `python -m ruff format`
-- `python -m mypy python_template`
+- `python -m mypy pretrained_dpa`

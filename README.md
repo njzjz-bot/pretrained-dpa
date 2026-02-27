@@ -1,5 +1,5 @@
-# Python template
+# Pretrained DPA
 
-<!-- [![PyPI - Version](https://img.shields.io/pypi/v/python-template)](https://pypi.org/p/python-template) -->
+<!-- [![PyPI - Version](https://img.shields.io/pypi/v/pretrained-dpa)](https://pypi.org/p/pretrained-dpa) -->
 
-`python-template` is a template to start a new Python project quickly.
+`pretrained-dpa` is a template to start a new Python project quickly.
