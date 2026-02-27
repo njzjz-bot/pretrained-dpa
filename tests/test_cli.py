@@ -3,18 +3,48 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import logging
-from typing import TYPE_CHECKING
 
 from pretrained_dpa import cli
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
 
 MODEL_NAME = "DPA-3.2-5M"
 MODEL_URL = "https://example.com/DPA-3.2-5M.pt"
 MODEL_FILENAME = "DPA-3.2-5M.pt"
+
+
+class ResponseOK:
+    """Minimal context-manager response object for successful downloads."""
+
+    def __init__(self, payload: bytes) -> None:
+        self._stream = io.BytesIO(payload)
+
+    def read(self, size: int = -1) -> bytes:
+        """Read bytes like a file object."""
+        return self._stream.read(size)
+
+    def __enter__(self):
+        """Enter context manager."""
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        """Exit context manager without swallowing errors."""
+
+
+class ResponseFail:
+    """Minimal context-manager response object that fails while reading."""
+
+    def read(self, _size: int = -1) -> bytes:
+        """Raise to simulate broken connection."""
+        msg = "boom"
+        raise OSError(msg)
+
+    def __enter__(self):
+        """Enter context manager."""
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        """Exit context manager without swallowing errors."""
 
 
 def _model_map_with_hash(sha256: str) -> dict[str, dict[str, str]]:
@@ -42,10 +72,8 @@ def test_configure_logging_sets_info_level() -> None:
         root.setLevel(original_level)
 
 
-def test_download_unknown_model(caplog, monkeypatch) -> None:
-    """Unknown model name should return code 2 and show available models."""
-    monkeypatch.setattr(cli, "_load_model_map", lambda: _model_map_with_hash("0" * 64))
-
+def test_download_unknown_model_uses_packaged_map(caplog) -> None:
+    """Unknown model should fail and list available packaged models."""
     with caplog.at_level(logging.ERROR):
         code = cli.download_model("NOT-EXIST")
 
@@ -90,19 +118,20 @@ def test_download_model_success(monkeypatch, tmp_path, caplog) -> None:
         lambda: _model_map_with_hash(hashlib.sha256(payload).hexdigest()),
     )
 
-    def fake_download(url: str, destination: Path) -> None:
-        """Write predictable bytes as a fake download."""
+    def fake_urlopen(url: str, timeout: int = 120) -> ResponseOK:
+        """Return deterministic payload without network access."""
         assert MODEL_FILENAME in url
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(payload)
+        assert timeout == 120
+        return ResponseOK(payload)
 
-    monkeypatch.setattr(cli, "_download_file", fake_download)
+    monkeypatch.setattr(cli.urllib.request, "urlopen", fake_urlopen)
 
     with caplog.at_level(logging.INFO):
         code = cli.download_model(MODEL_NAME)
 
     assert code == 0
     assert model_file.exists()
+    assert model_file.read_bytes() == payload
     assert f"Downloaded '{MODEL_NAME}' to:" in caplog.text
     assert str(model_file) in caplog.text
 
@@ -114,11 +143,12 @@ def test_download_model_bad_hash_is_removed(monkeypatch, tmp_path, caplog) -> No
     monkeypatch.setattr(cli, "DEFAULT_CACHE_DIR", model_dir)
     monkeypatch.setattr(cli, "_load_model_map", lambda: _model_map_with_hash("0" * 64))
 
-    def fake_download(_url: str, destination: Path) -> None:
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(b"corrupted")
+    def fake_urlopen(_url: str, timeout: int = 120) -> ResponseOK:
+        """Return deterministic payload without network access."""
+        assert timeout == 120
+        return ResponseOK(b"corrupted")
 
-    monkeypatch.setattr(cli, "_download_file", fake_download)
+    monkeypatch.setattr(cli.urllib.request, "urlopen", fake_urlopen)
 
     with caplog.at_level(logging.ERROR):
         code = cli.download_model(MODEL_NAME)
@@ -130,7 +160,7 @@ def test_download_model_bad_hash_is_removed(monkeypatch, tmp_path, caplog) -> No
     assert not model_file.exists()
 
 
-def test_download_existing_model_bad_hash_triggers_redownload(monkeypatch, tmp_path, caplog) -> None:
+def test_download_existing_bad_hash_triggers_redownload(monkeypatch, tmp_path, caplog) -> None:
     """Bad cached file should be removed and replaced by downloaded content."""
     model_dir = tmp_path / "cache"
     model_file = model_dir / MODEL_FILENAME
@@ -145,10 +175,12 @@ def test_download_existing_model_bad_hash_triggers_redownload(monkeypatch, tmp_p
         lambda: _model_map_with_hash(hashlib.sha256(good_payload).hexdigest()),
     )
 
-    def fake_download(_url: str, destination: Path) -> None:
-        destination.write_bytes(good_payload)
+    def fake_urlopen(_url: str, timeout: int = 120) -> ResponseOK:
+        """Return deterministic payload without network access."""
+        assert timeout == 120
+        return ResponseOK(good_payload)
 
-    monkeypatch.setattr(cli, "_download_file", fake_download)
+    monkeypatch.setattr(cli.urllib.request, "urlopen", fake_urlopen)
 
     with caplog.at_level(logging.INFO):
         code = cli.download_model(MODEL_NAME)
@@ -156,6 +188,36 @@ def test_download_existing_model_bad_hash_triggers_redownload(monkeypatch, tmp_p
     assert code == 0
     assert "failed SHA256 check, re-downloading" in caplog.text
     assert model_file.read_bytes() == good_payload
+
+
+def test_download_network_error_returns_one(monkeypatch, caplog, tmp_path) -> None:
+    """Failure during stream copy should return 1 and clean temporary files."""
+    model_dir = tmp_path / "cache"
+    output_path = model_dir / MODEL_FILENAME
+    part_path = output_path.with_suffix(".pt.part")
+
+    payload = b"ok"
+    monkeypatch.setattr(cli, "DEFAULT_CACHE_DIR", model_dir)
+    monkeypatch.setattr(
+        cli,
+        "_load_model_map",
+        lambda: _model_map_with_hash(hashlib.sha256(payload).hexdigest()),
+    )
+
+    def fake_urlopen(_url: str, timeout: int = 120) -> ResponseFail:
+        """Return failing response object."""
+        assert timeout == 120
+        return ResponseFail()
+
+    monkeypatch.setattr(cli.urllib.request, "urlopen", fake_urlopen)
+
+    with caplog.at_level(logging.ERROR):
+        code = cli.download_model(MODEL_NAME)
+
+    assert code == 1
+    assert "Failed to download" in caplog.text
+    assert not output_path.exists()
+    assert not part_path.exists()
 
 
 def test_main_download_success(monkeypatch, tmp_path) -> None:
@@ -170,11 +232,11 @@ def test_main_download_success(monkeypatch, tmp_path) -> None:
         lambda: _model_map_with_hash(hashlib.sha256(payload).hexdigest()),
     )
 
-    def fake_download(_url: str, destination: Path) -> None:
-        """Write a file without network activity."""
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(payload)
+    def fake_urlopen(_url: str, timeout: int = 120) -> ResponseOK:
+        """Return deterministic payload without network access."""
+        assert timeout == 120
+        return ResponseOK(payload)
 
-    monkeypatch.setattr(cli, "_download_file", fake_download)
+    monkeypatch.setattr(cli.urllib.request, "urlopen", fake_urlopen)
 
     assert cli.main(["download", MODEL_NAME]) == 0
