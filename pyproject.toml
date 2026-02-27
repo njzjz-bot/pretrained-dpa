@@ -31,6 +31,7 @@ keywords = [
 ]
 
 [project.scripts]
+pretrained-dpa = "pretrained_dpa.cli:main"
 
 [project.urls]
 repository = "https://github.com/njzjz/pretrained-dpa"  # Please revise this line.
@@ -43,6 +44,9 @@ test = [
 
 [tool.setuptools.packages.find]
 include = ["pretrained_dpa*"]  # Please revise this line.
+
+[tool.setuptools.package-data]
+pretrained_dpa = ["models.json"]
 
 [tool.setuptools_scm]
 version_file = "pretrained_dpa/_version.py"  # Please revise this line.
