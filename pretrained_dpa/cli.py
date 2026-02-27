@@ -5,20 +5,20 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import logging
 import shutil
-import sys
 import urllib.error
 import urllib.request
 from importlib.resources import files
 from pathlib import Path
 
 DEFAULT_CACHE_DIR = Path.home() / ".cache" / "pretrained-dpa" / "models"
+LOGGER = logging.getLogger(__name__)
 
 
-def _echo(message: str, *, error: bool = False) -> None:
-    """Write a message to stdout or stderr."""
-    stream = sys.stderr if error else sys.stdout
-    stream.write(f"{message}\n")
+def configure_logging() -> None:
+    """Configure basic logging for CLI output."""
+    logging.basicConfig(level=logging.INFO, format="%(message)s", force=True)
 
 
 def _load_model_map() -> dict[str, dict[str, str]]:
@@ -27,15 +27,6 @@ def _load_model_map() -> dict[str, dict[str, str]]:
     with data_path.open("r", encoding="utf-8") as f:
         data: dict[str, dict[str, str]] = json.load(f)
     return data
-
-
-def _sha256sum(path: Path) -> str:
-    """Calculate SHA256 checksum of a file."""
-    hasher = hashlib.sha256()
-    with path.open("rb") as f:
-        for chunk in iter(lambda: f.read(1024 * 1024), b""):
-            hasher.update(chunk)
-    return hasher.hexdigest()
 
 
 def _download_file(url: str, destination: Path) -> None:
@@ -53,14 +44,23 @@ def _download_file(url: str, destination: Path) -> None:
     tmp_path.replace(destination)
 
 
+def _sha256sum(path: Path) -> str:
+    """Calculate SHA256 checksum of a file."""
+    hasher = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+
 def download_model(model_name: str) -> int:
     """Download a named pretrained model if it is not already cached."""
     model_map = _load_model_map()
     model_info = model_map.get(model_name)
     if model_info is None:
         available = ", ".join(sorted(model_map))
-        _echo(f"Unknown model: {model_name}", error=True)
-        _echo(f"Available models: {available}", error=True)
+        LOGGER.error("Unknown model: %s", model_name)
+        LOGGER.error("Available models: %s", available)
         return 2
 
     filename = model_info["filename"]
@@ -71,30 +71,30 @@ def download_model(model_name: str) -> int:
     if output_path.exists():
         actual_sha256 = _sha256sum(output_path)
         if actual_sha256 == expected_sha256:
-            _echo(f"Model '{model_name}' already exists at:")
-            _echo(str(output_path))
+            LOGGER.info("Model '%s' already exists at:", model_name)
+            LOGGER.info("%s", output_path)
             return 0
 
-        _echo(f"Cached file for '{model_name}' failed SHA256 check, re-downloading...", error=True)
+        LOGGER.warning("Cached file for '%s' failed SHA256 check, re-downloading...", model_name)
         output_path.unlink(missing_ok=True)
 
-    _echo(f"Downloading '{model_name}'...")
+    LOGGER.info("Downloading '%s'...", model_name)
     try:
         _download_file(url, output_path)
-    except (urllib.error.URLError, OSError) as exc:
-        _echo(f"Failed to download '{model_name}': {exc}", error=True)
+    except (urllib.error.URLError, OSError):
+        LOGGER.exception("Failed to download '%s'", model_name)
         return 1
 
     actual_sha256 = _sha256sum(output_path)
     if actual_sha256 != expected_sha256:
         output_path.unlink(missing_ok=True)
-        _echo(f"Downloaded '{model_name}' but SHA256 verification failed.", error=True)
-        _echo(f"Expected: {expected_sha256}", error=True)
-        _echo(f"Actual:   {actual_sha256}", error=True)
+        LOGGER.error("Downloaded '%s' but SHA256 verification failed.", model_name)
+        LOGGER.error("Expected: %s", expected_sha256)
+        LOGGER.error("Actual:   %s", actual_sha256)
         return 1
 
-    _echo(f"Downloaded '{model_name}' to:")
-    _echo(str(output_path))
+    LOGGER.info("Downloaded '%s' to:", model_name)
+    LOGGER.info("%s", output_path)
     return 0
 
 
@@ -114,6 +114,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     """Run the CLI and return exit code."""
+    configure_logging()
+
     parser = build_parser()
     args = parser.parse_args(argv)
 

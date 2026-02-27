@@ -18,4 +18,6 @@ This command will download the model file from Hugging Face to:
 ~/.cache/pretrained-dpa/models/DPA-3.2-5M.pt
 ```
 
-If the file already exists, it will not be downloaded again, and the CLI will print the existing location.
+The CLI validates SHA256 against metadata in `pretrained_dpa/models.json`.
+If an existing cached file fails verification, it is deleted and re-downloaded.
+If a fresh download fails checksum verification, it is deleted and the command exits with an error.
