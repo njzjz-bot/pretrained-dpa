@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import shutil
 import sys
@@ -28,13 +29,26 @@ def _load_model_map() -> dict[str, dict[str, str]]:
     return data
 
 
+def _sha256sum(path: Path) -> str:
+    """Calculate SHA256 checksum of a file."""
+    hasher = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+
 def _download_file(url: str, destination: Path) -> None:
     """Download URL content into destination atomically."""
     destination.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = destination.with_suffix(destination.suffix + ".part")
 
-    with urllib.request.urlopen(url, timeout=120) as response, tmp_path.open("wb") as out_file:  # noqa: S310
-        shutil.copyfileobj(response, out_file)
+    try:
+        with urllib.request.urlopen(url, timeout=120) as response, tmp_path.open("wb") as out_file:  # noqa: S310
+            shutil.copyfileobj(response, out_file)
+    except Exception:
+        tmp_path.unlink(missing_ok=True)
+        raise
 
     tmp_path.replace(destination)
 
@@ -51,18 +65,32 @@ def download_model(model_name: str) -> int:
 
     filename = model_info["filename"]
     url = model_info["url"]
+    expected_sha256 = model_info["sha256"]
     output_path = DEFAULT_CACHE_DIR / filename
 
     if output_path.exists():
-        _echo(f"Model '{model_name}' already exists at:")
-        _echo(str(output_path))
-        return 0
+        actual_sha256 = _sha256sum(output_path)
+        if actual_sha256 == expected_sha256:
+            _echo(f"Model '{model_name}' already exists at:")
+            _echo(str(output_path))
+            return 0
+
+        _echo(f"Cached file for '{model_name}' failed SHA256 check, re-downloading...", error=True)
+        output_path.unlink(missing_ok=True)
 
     _echo(f"Downloading '{model_name}'...")
     try:
         _download_file(url, output_path)
     except (urllib.error.URLError, OSError) as exc:
         _echo(f"Failed to download '{model_name}': {exc}", error=True)
+        return 1
+
+    actual_sha256 = _sha256sum(output_path)
+    if actual_sha256 != expected_sha256:
+        output_path.unlink(missing_ok=True)
+        _echo(f"Downloaded '{model_name}' but SHA256 verification failed.", error=True)
+        _echo(f"Expected: {expected_sha256}", error=True)
+        _echo(f"Actual:   {actual_sha256}", error=True)
         return 1
 
     _echo(f"Downloaded '{model_name}' to:")
