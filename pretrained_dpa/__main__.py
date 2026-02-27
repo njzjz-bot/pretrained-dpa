@@ -1,7 +1,8 @@
-"""Main entry point for the command line interface."""
+"""Main entry point for pretrained_dpa command line interface."""
 
 from __future__ import annotations
 
+from .cli import main
+
 if __name__ == "__main__":
-    msg = "This module is not meant to be executed directly."
-    raise NotImplementedError(msg)
+    raise SystemExit(main())

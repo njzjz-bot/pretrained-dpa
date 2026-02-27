@@ -1,0 +1,7 @@
+{
+  "DPA-3.2-5M": {
+    "url": "https://huggingface.co/deepmodelingcommunity/DPA-3.2-5M/resolve/main/DPA-3.2-5M.pt?download=true",
+    "filename": "DPA-3.2-5M.pt",
+    "sha256": "876354744aeaae17b2639a6a690514470273784f2b4836280850f50cbb799165"
+  }
+}
