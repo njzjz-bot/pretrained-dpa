@@ -6,9 +6,9 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "python-template"  # Please revise this line.
+name = "pretrained-dpa"  # Please revise this line.
 dynamic = ["version"]
-description = "A Python template."  # Please revise this line.
+description = "A Pretrained DPA."  # Please revise this line.
 authors = [
     { name = "Jinzhe Zeng", email = "jinzhe.zeng@ustc.edu.cn"},
 ]
@@ -33,7 +33,7 @@ keywords = [
 [project.scripts]
 
 [project.urls]
-repository = "https://github.com/njzjz/python-template"  # Please revise this line.
+repository = "https://github.com/njzjz/pretrained-dpa"  # Please revise this line.
 
 [project.optional-dependencies]
 test = [
@@ -42,10 +42,10 @@ test = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["python_template*"]  # Please revise this line.
+include = ["pretrained_dpa*"]  # Please revise this line.
 
 [tool.setuptools_scm]
-version_file = "python_template/_version.py"  # Please revise this line.
+version_file = "pretrained_dpa/_version.py"  # Please revise this line.
 
 [tool.ruff.lint]
 select = [
@@ -84,4 +84,4 @@ required-imports = [
 ]
 
 [tool.coverage.report]
-include = ["python_template/*"]  # Please revise this line.
+include = ["pretrained_dpa/*"]  # Please revise this line.
