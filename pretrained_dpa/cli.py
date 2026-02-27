@@ -13,6 +13,9 @@ from importlib.resources import files
 from pathlib import Path
 
 DEFAULT_CACHE_DIR = Path.home() / ".cache" / "pretrained-dpa" / "models"
+COUNTRY_API_URL = "https://ipinfo.io/country"
+HF_ORIGIN = "https://huggingface.co"
+HF_MIRROR = "https://hf-mirror.com"
 LOGGER = logging.getLogger(__name__)
 
 
@@ -53,6 +56,28 @@ def _sha256sum(path: Path) -> str:
     return hasher.hexdigest()
 
 
+def _is_in_china() -> bool:
+    """Return whether runtime appears to be in mainland China."""
+    try:
+        with urllib.request.urlopen(COUNTRY_API_URL, timeout=5) as response:  # noqa: S310
+            country = response.read().decode("utf-8").strip().upper()
+    except (urllib.error.URLError, OSError, UnicodeDecodeError):
+        return False
+
+    return country == "CN"
+
+
+def _select_download_url(url: str) -> str:
+    """Select download URL with optional Hugging Face mirror in China."""
+    if not url.startswith(HF_ORIGIN):
+        return url
+
+    if _is_in_china():
+        return url.replace(HF_ORIGIN, HF_MIRROR, 1)
+
+    return url
+
+
 def download_model(model_name: str) -> int:
     """Download a named pretrained model if it is not already cached."""
     model_map = _load_model_map()
@@ -64,7 +89,8 @@ def download_model(model_name: str) -> int:
         return 2
 
     filename = model_info["filename"]
-    url = model_info["url"]
+    original_url = model_info["url"]
+    download_url = _select_download_url(original_url)
     expected_sha256 = model_info["sha256"]
     output_path = DEFAULT_CACHE_DIR / filename
 
@@ -79,8 +105,10 @@ def download_model(model_name: str) -> int:
         output_path.unlink(missing_ok=True)
 
     LOGGER.info("Downloading '%s'...", model_name)
+    if download_url != original_url:
+        LOGGER.info("Detected CN region, using mirror: %s", HF_MIRROR)
     try:
-        _download_file(url, output_path)
+        _download_file(download_url, output_path)
     except (urllib.error.URLError, OSError):
         LOGGER.exception("Failed to download '%s'", model_name)
         return 1
