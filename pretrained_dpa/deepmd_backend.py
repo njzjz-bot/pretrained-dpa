@@ -2,44 +2,22 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
+
+from deepmd.backend.backend import Backend  # type: ignore[import-not-found]
+from deepmd.infer.deep_eval import DeepEvalBackend  # type: ignore[import-not-found]
 
 from .cli import resolve_model_path
 
-try:
-    from deepmd.backend.backend import Backend  # type: ignore[import-not-found]
-    from deepmd.infer.deep_eval import DeepEvalBackend  # type: ignore[import-not-found]
+if TYPE_CHECKING:
+    from argparse import Namespace
 
-    _HAS_DEEPMD = True
-except ModuleNotFoundError:  # pragma: no cover
-    _HAS_DEEPMD = False
-
-    class DeepEvalBackend:  # type: ignore[no-redef]
-        """Fallback placeholder when deepmd-kit is not installed."""
-
-    class _DummyFeature:
-        DEEP_EVAL = 0
-
-    class Backend:  # type: ignore[no-redef]
-        """Fallback placeholder when deepmd-kit is not installed."""
-
-        Feature = _DummyFeature
-
-        @staticmethod
-        def register(_key: str) -> object:
-            """No-op register decorator for environments without deepmd-kit."""
-
-            def _decorator(cls: type) -> type:
-                return cls
-
-            return _decorator
-
-        @staticmethod
-        def detect_backend_by_model(_filename: str) -> type:
-            """Raise a clear error when deepmd-kit is unavailable."""
-            msg = "deepmd-kit is required to use pretrained backend"
-            raise ModuleNotFoundError(msg)
+    from deepmd.infer.deep_eval import DeepEval  # type: ignore[import-not-found]
+    from deepmd.utils.neighbor_stat import (
+        NeighborStat,  # type: ignore[import-not-found]
+    )
 
 
 def parse_pretrained_alias(model_file: str) -> str:
@@ -73,8 +51,7 @@ class _PretrainedDeepEvalBackend(DeepEvalBackend):
         model_name = parse_pretrained_alias(model_file)
         resolved = str(resolve_model_path(model_name))
 
-        backend_cls = Backend.detect_backend_by_model(resolved)
-        self._backend = backend_cls().deep_eval(
+        self._backend = DeepEvalBackend(
             resolved,
             output_def,
             *args,
@@ -123,7 +100,7 @@ class _PretrainedDeepEvalBackend(DeepEvalBackend):
         return self._backend.get_dim_aparam()
 
     @property
-    def model_type(self) -> object:
+    def model_type(self) -> type[DeepEval]:
         return self._backend.model_type
 
     def get_sel_type(self) -> list[int]:
@@ -147,7 +124,7 @@ class _PretrainedDeepEvalBackend(DeepEvalBackend):
     def get_ntypes_spin(self) -> int:
         return self._backend.get_ntypes_spin()
 
-    def get_model(self) -> object:
+    def get_model(self) -> Any:
         return self._backend.get_model()
 
 
@@ -156,14 +133,14 @@ class PretrainedBackend(Backend):
     """Backend that resolves pretrained aliases and delegates to actual backend."""
 
     name = "Pretrained alias backend"
-    features: ClassVar[object] = Backend.Feature.DEEP_EVAL
+    features: ClassVar[Backend.Feature] = Backend.Feature.DEEP_EVAL
     suffixes: ClassVar[list[str]] = [".pretrained"]
 
     def is_available(self) -> bool:
-        return _HAS_DEEPMD
+        return True
 
     @property
-    def entry_point_hook(self) -> object:
+    def entry_point_hook(self) -> Callable[[Namespace], None]:
         msg = "Entry point is not supported by pretrained backend"
         raise NotImplementedError(msg)
 
@@ -172,16 +149,16 @@ class PretrainedBackend(Backend):
         return _PretrainedDeepEvalBackend
 
     @property
-    def neighbor_stat(self) -> object:
+    def neighbor_stat(self) -> type[NeighborStat]:
         msg = "Neighbor stat is not supported by pretrained backend"
         raise NotImplementedError(msg)
 
     @property
-    def serialize_hook(self) -> object:
+    def serialize_hook(self) -> Callable[[str], dict]:
         msg = "Serialize hook is not supported by pretrained backend"
         raise NotImplementedError(msg)
 
     @property
-    def deserialize_hook(self) -> object:
+    def deserialize_hook(self) -> Callable[[str, dict], None]:
         msg = "Deserialize hook is not supported by pretrained backend"
         raise NotImplementedError(msg)

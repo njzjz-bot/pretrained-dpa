@@ -7,6 +7,8 @@ import io
 import logging
 import urllib.error
 
+import pytest
+
 from pretrained_dpa import cli
 
 MODEL_NAME = "DPA-3.2-5M"
@@ -72,6 +74,45 @@ def test_configure_logging_sets_info_level() -> None:
     finally:
         root.handlers = original_handlers
         root.setLevel(original_level)
+
+
+def test_resolve_model_path_returns_existing_when_hash_matches(monkeypatch, tmp_path) -> None:
+    """Resolver should return cached path when existing file checksum matches."""
+    model_dir = tmp_path / "cache"
+    model_file = model_dir / MODEL_FILENAME
+    payload = b"cached"
+    model_dir.mkdir(parents=True, exist_ok=True)
+    model_file.write_bytes(payload)
+
+    monkeypatch.setattr(cli, "DEFAULT_CACHE_DIR", model_dir)
+    monkeypatch.setattr(
+        cli,
+        "_load_model_map",
+        lambda: _model_map_with_hash(hashlib.sha256(payload).hexdigest()),
+    )
+
+    resolved = cli.resolve_model_path(MODEL_NAME)
+
+    assert resolved == model_file
+
+
+def test_resolve_model_path_raises_on_unknown_model(monkeypatch) -> None:
+    """Resolver should raise ValueError for unknown model aliases."""
+    monkeypatch.setattr(cli, "_load_model_map", lambda: _model_map_with_hash("0" * 64))
+
+    with pytest.raises(ValueError, match="Unknown model"):
+        cli.resolve_model_path("NOT-EXIST")
+
+
+def test_resolve_model_path_raises_when_download_fails(monkeypatch, tmp_path) -> None:
+    """Resolver should raise RuntimeError when download process returns non-zero."""
+    model_dir = tmp_path / "cache"
+    monkeypatch.setattr(cli, "DEFAULT_CACHE_DIR", model_dir)
+    monkeypatch.setattr(cli, "_load_model_map", lambda: _model_map_with_hash("0" * 64))
+    monkeypatch.setattr(cli, "download_model", lambda _name: 1)
+
+    with pytest.raises(RuntimeError, match="Failed to resolve model"):
+        cli.resolve_model_path(MODEL_NAME)
 
 
 def test_download_unknown_model_uses_packaged_map(caplog) -> None:

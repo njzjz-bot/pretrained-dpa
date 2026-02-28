@@ -95,6 +95,7 @@ required-imports = [
     "D101",
     "D102",
     "SLF001",
+    "B010",
 ]
 
 [tool.coverage.report]

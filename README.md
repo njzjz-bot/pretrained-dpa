@@ -28,7 +28,7 @@ When running in China (`https://ipinfo.io/country` returns `CN`), Hugging Face U
 https://hf-mirror.com
 ```
 
-## DeepMD integration: `*.pretrained` alias
+## DeePMD-kit integration: `*.pretrained` alias
 
 This package also registers a `deepmd.backend` entrypoint backend named `pretrained`.
 
