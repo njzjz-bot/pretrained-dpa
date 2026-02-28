@@ -33,6 +33,9 @@ keywords = [
 [project.scripts]
 pretrained-dpa = "pretrained_dpa.cli:main"
 
+[project.entry-points."deepmd.backend"]
+pretrained = "pretrained_dpa.deepmd_backend:PretrainedBackend"
+
 [project.urls]
 repository = "https://github.com/njzjz/pretrained-dpa"  # Please revise this line.
 
@@ -69,6 +72,8 @@ ignore = [
     "ANN102",
     "C901",
     "E501",
+    "D102",
+    "TC003",
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -80,11 +85,16 @@ required-imports = [
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]
+"pretrained_dpa/deepmd_backend.py" = [
+    "ANN401",
+    "D102",
+]
 "tests/**/*.py" = [
     "S101", # asserts allowed in tests...
     "ANN",
     "D101",
     "D102",
+    "SLF001",
 ]
 
 [tool.coverage.report]

@@ -78,6 +78,32 @@ def _select_download_url(url: str) -> str:
     return url
 
 
+def resolve_model_path(model_name: str) -> Path:
+    """Resolve model alias to a verified local file, downloading if needed."""
+    configure_logging()
+    model_map = _load_model_map()
+    model_info = model_map.get(model_name)
+    if model_info is None:
+        available = ", ".join(sorted(model_map))
+        msg = f"Unknown model: {model_name}. Available models: {available}"
+        raise ValueError(msg)
+
+    filename = model_info["filename"]
+    output_path = DEFAULT_CACHE_DIR / filename
+
+    if output_path.exists():
+        actual_sha256 = _sha256sum(output_path)
+        if actual_sha256 == model_info["sha256"]:
+            return output_path
+
+    code = download_model(model_name)
+    if code != 0:
+        msg = f"Failed to resolve model '{model_name}'"
+        raise RuntimeError(msg)
+
+    return output_path
+
+
 def download_model(model_name: str) -> int:
     """Download a named pretrained model if it is not already cached."""
     model_map = _load_model_map()
