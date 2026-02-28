@@ -51,7 +51,9 @@ class ResponseFail:
         """Exit context manager without swallowing errors."""
 
 
-def _model_map_with_hash(sha256: str, *, url: str = MODEL_URL) -> dict[str, dict[str, str]]:
+def _model_map_with_hash(
+    sha256: str, *, url: str = MODEL_URL
+) -> dict[str, dict[str, str]]:
     """Create a predictable model mapping for tests."""
     return {
         MODEL_NAME: {
@@ -76,7 +78,9 @@ def test_configure_logging_sets_info_level() -> None:
         root.setLevel(original_level)
 
 
-def test_resolve_model_path_returns_existing_when_hash_matches(monkeypatch, tmp_path) -> None:
+def test_resolve_model_path_returns_existing_when_hash_matches(
+    monkeypatch, tmp_path
+) -> None:
     """Resolver should return cached path when existing file checksum matches."""
     model_dir = tmp_path / "cache"
     model_file = model_dir / MODEL_FILENAME
@@ -206,7 +210,9 @@ def test_download_model_bad_hash_is_removed(monkeypatch, tmp_path, caplog) -> No
     assert not model_file.exists()
 
 
-def test_download_existing_bad_hash_triggers_redownload(monkeypatch, tmp_path, caplog) -> None:
+def test_download_existing_bad_hash_triggers_redownload(
+    monkeypatch, tmp_path, caplog
+) -> None:
     """Bad cached file should be removed and replaced by downloaded content."""
     model_dir = tmp_path / "cache"
     model_file = model_dir / MODEL_FILENAME
@@ -278,7 +284,9 @@ def test_download_uses_mirror_in_cn(monkeypatch, tmp_path, caplog) -> None:
     monkeypatch.setattr(
         cli,
         "_load_model_map",
-        lambda: _model_map_with_hash(hashlib.sha256(payload).hexdigest(), url=HF_MODEL_URL),
+        lambda: _model_map_with_hash(
+            hashlib.sha256(payload).hexdigest(), url=HF_MODEL_URL
+        ),
     )
 
     def fake_urlopen(url: str, timeout: int = 120) -> ResponseOK:
@@ -300,7 +308,9 @@ def test_download_uses_mirror_in_cn(monkeypatch, tmp_path, caplog) -> None:
     assert "using mirror" in caplog.text
 
 
-def test_download_country_check_failure_falls_back_to_origin(monkeypatch, tmp_path) -> None:
+def test_download_country_check_failure_falls_back_to_origin(
+    monkeypatch, tmp_path
+) -> None:
     """If country API fails, download should fall back to huggingface origin URL."""
     model_dir = tmp_path / "cache"
     payload = b"origin-model"
@@ -309,7 +319,9 @@ def test_download_country_check_failure_falls_back_to_origin(monkeypatch, tmp_pa
     monkeypatch.setattr(
         cli,
         "_load_model_map",
-        lambda: _model_map_with_hash(hashlib.sha256(payload).hexdigest(), url=HF_MODEL_URL),
+        lambda: _model_map_with_hash(
+            hashlib.sha256(payload).hexdigest(), url=HF_MODEL_URL
+        ),
     )
 
     def fake_urlopen(url: str, timeout: int = 120) -> ResponseOK:

@@ -41,6 +41,7 @@ dp = DeepPot("DPA-3.2-5M.pretrained")
 ```
 
 Behavior:
+
 - parse alias `DPA-3.2-5M.pretrained` → model name `DPA-3.2-5M`
 - resolve to cached model path `~/.cache/pretrained-dpa/models/DPA-3.2-5M.pt`
 - if missing (or checksum mismatch), auto-download and verify SHA256

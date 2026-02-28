@@ -61,8 +61,13 @@ deepmd_backend = importlib.import_module("pretrained_dpa.deepmd_backend")
 
 def test_model_name_from_alias() -> None:
     """Valid alias should parse model name correctly."""
-    assert deepmd_backend.parse_pretrained_alias("DPA-3.2-5M.pretrained") == "DPA-3.2-5M"
-    assert deepmd_backend.parse_pretrained_alias("relative/DPA-3.2-5M.pretrained") == "DPA-3.2-5M"
+    assert (
+        deepmd_backend.parse_pretrained_alias("DPA-3.2-5M.pretrained") == "DPA-3.2-5M"
+    )
+    assert (
+        deepmd_backend.parse_pretrained_alias("relative/DPA-3.2-5M.pretrained")
+        == "DPA-3.2-5M"
+    )
 
 
 @pytest.mark.parametrize(
@@ -79,7 +84,9 @@ def test_model_name_from_alias_rejects_invalid(alias: str) -> None:
         deepmd_backend.parse_pretrained_alias(alias)
 
 
-def test_pretrained_deep_eval_backend_resolves_and_delegates(monkeypatch, tmp_path) -> None:
+def test_pretrained_deep_eval_backend_resolves_and_delegates(
+    monkeypatch, tmp_path
+) -> None:
     """Backend should resolve alias and delegate all backend calls."""
     resolved_model = tmp_path / "DPA-3.2-5M.pt"
     resolved_model.write_bytes(b"ok")
