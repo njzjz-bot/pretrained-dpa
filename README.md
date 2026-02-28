@@ -27,3 +27,22 @@ When running in China (`https://ipinfo.io/country` returns `CN`), Hugging Face U
 ```text
 https://hf-mirror.com
 ```
+
+## DeePMD-kit integration: `*.pretrained` alias
+
+This package also registers a `deepmd.backend` entrypoint backend named `pretrained`.
+
+After installing `pretrained-dpa`, you can directly pass a pretrained alias file name to DeepMD:
+
+```python
+from deepmd.infer import DeepPot
+
+dp = DeepPot("DPA-3.2-5M.pretrained")
+```
+
+Behavior:
+
+- parse alias `DPA-3.2-5M.pretrained` → model name `DPA-3.2-5M`
+- resolve to cached model path `~/.cache/pretrained-dpa/models/DPA-3.2-5M.pt`
+- if missing (or checksum mismatch), auto-download and verify SHA256
+- delegate evaluation to the real backend based on resolved model suffix (`.pt`)

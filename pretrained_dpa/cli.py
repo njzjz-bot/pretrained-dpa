@@ -8,6 +8,7 @@ import json
 import logging
 import shutil
 import urllib.error
+import urllib.parse
 import urllib.request
 from importlib.resources import files
 from pathlib import Path
@@ -32,13 +33,25 @@ def _load_model_map() -> dict[str, dict[str, str]]:
     return data
 
 
+def _validate_download_url(url: str) -> None:
+    """Validate that download URL uses a permitted scheme."""
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https":
+        msg = f"Unsupported URL scheme for download: {parsed.scheme or '<empty>'}"
+        raise ValueError(msg)
+
+
 def _download_file(url: str, destination: Path) -> None:
     """Download URL content into destination atomically."""
+    _validate_download_url(url)
     destination.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = destination.with_suffix(destination.suffix + ".part")
 
     try:
-        with urllib.request.urlopen(url, timeout=120) as response, tmp_path.open("wb") as out_file:  # noqa: S310
+        with (
+            urllib.request.urlopen(url, timeout=120) as response,  # noqa: S310
+            tmp_path.open("wb") as out_file,
+        ):
             shutil.copyfileobj(response, out_file)
     except Exception:
         tmp_path.unlink(missing_ok=True)
@@ -78,6 +91,32 @@ def _select_download_url(url: str) -> str:
     return url
 
 
+def resolve_model_path(model_name: str) -> Path:
+    """Resolve model alias to a verified local file, downloading if needed."""
+    configure_logging()
+    model_map = _load_model_map()
+    model_info = model_map.get(model_name)
+    if model_info is None:
+        available = ", ".join(sorted(model_map))
+        msg = f"Unknown model: {model_name}. Available models: {available}"
+        raise ValueError(msg)
+
+    filename = model_info["filename"]
+    output_path = DEFAULT_CACHE_DIR / filename
+
+    if output_path.exists():
+        actual_sha256 = _sha256sum(output_path)
+        if actual_sha256 == model_info["sha256"]:
+            return output_path
+
+    code = download_model(model_name)
+    if code != 0:
+        msg = f"Failed to resolve model '{model_name}'"
+        raise RuntimeError(msg)
+
+    return output_path
+
+
 def download_model(model_name: str) -> int:
     """Download a named pretrained model if it is not already cached."""
     model_map = _load_model_map()
@@ -101,7 +140,10 @@ def download_model(model_name: str) -> int:
             LOGGER.info("%s", output_path)
             return 0
 
-        LOGGER.warning("Cached file for '%s' failed SHA256 check, re-downloading...", model_name)
+        LOGGER.warning(
+            "Cached file for '%s' failed SHA256 check, re-downloading...",
+            model_name,
+        )
         output_path.unlink(missing_ok=True)
 
     LOGGER.info("Downloading '%s'...", model_name)
@@ -134,7 +176,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    download_parser = subparsers.add_parser("download", help="Download a pretrained model")
+    download_parser = subparsers.add_parser(
+        "download",
+        help="Download a pretrained model",
+    )
     download_parser.add_argument("model_name", help="Model name, e.g. DPA-3.2-5M")
 
     return parser

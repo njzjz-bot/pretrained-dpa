@@ -7,7 +7,7 @@ import nox
 
 @nox.session
 def tests(session: nox.Session) -> None:
-    """Run test suite with pytest."""
+    """Run full test suite (unit + DeepMD integration) with pytest."""
     session.install("-e.[test]")
     session.run(
         "pytest",

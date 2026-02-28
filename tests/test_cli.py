@@ -7,6 +7,8 @@ import io
 import logging
 import urllib.error
 
+import pytest
+
 from pretrained_dpa import cli
 
 MODEL_NAME = "DPA-3.2-5M"
@@ -49,7 +51,11 @@ class ResponseFail:
         """Exit context manager without swallowing errors."""
 
 
-def _model_map_with_hash(sha256: str, *, url: str = MODEL_URL) -> dict[str, dict[str, str]]:
+def _model_map_with_hash(
+    sha256: str,
+    *,
+    url: str = MODEL_URL,
+) -> dict[str, dict[str, str]]:
     """Create a predictable model mapping for tests."""
     return {
         MODEL_NAME: {
@@ -72,6 +78,48 @@ def test_configure_logging_sets_info_level() -> None:
     finally:
         root.handlers = original_handlers
         root.setLevel(original_level)
+
+
+def test_resolve_model_path_returns_existing_when_hash_matches(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    """Resolver should return cached path when existing file checksum matches."""
+    model_dir = tmp_path / "cache"
+    model_file = model_dir / MODEL_FILENAME
+    payload = b"cached"
+    model_dir.mkdir(parents=True, exist_ok=True)
+    model_file.write_bytes(payload)
+
+    monkeypatch.setattr(cli, "DEFAULT_CACHE_DIR", model_dir)
+    monkeypatch.setattr(
+        cli,
+        "_load_model_map",
+        lambda: _model_map_with_hash(hashlib.sha256(payload).hexdigest()),
+    )
+
+    resolved = cli.resolve_model_path(MODEL_NAME)
+
+    assert resolved == model_file
+
+
+def test_resolve_model_path_raises_on_unknown_model(monkeypatch) -> None:
+    """Resolver should raise ValueError for unknown model aliases."""
+    monkeypatch.setattr(cli, "_load_model_map", lambda: _model_map_with_hash("0" * 64))
+
+    with pytest.raises(ValueError, match="Unknown model"):
+        cli.resolve_model_path("NOT-EXIST")
+
+
+def test_resolve_model_path_raises_when_download_fails(monkeypatch, tmp_path) -> None:
+    """Resolver should raise RuntimeError when download process returns non-zero."""
+    model_dir = tmp_path / "cache"
+    monkeypatch.setattr(cli, "DEFAULT_CACHE_DIR", model_dir)
+    monkeypatch.setattr(cli, "_load_model_map", lambda: _model_map_with_hash("0" * 64))
+    monkeypatch.setattr(cli, "download_model", lambda _name: 1)
+
+    with pytest.raises(RuntimeError, match="Failed to resolve model"):
+        cli.resolve_model_path(MODEL_NAME)
 
 
 def test_download_unknown_model_uses_packaged_map(caplog) -> None:
@@ -106,6 +154,14 @@ def test_download_existing_model_skips_download(monkeypatch, tmp_path, caplog) -
     assert code == 0
     assert "already exists" in caplog.text
     assert str(model_file) in caplog.text
+
+
+def test_download_file_rejects_non_https_scheme(tmp_path) -> None:
+    """Downloader should reject URLs that are not HTTPS."""
+    destination = tmp_path / "cache" / MODEL_FILENAME
+
+    with pytest.raises(ValueError, match="Unsupported URL scheme"):
+        cli._download_file("http://example.com/model.pt", destination)
 
 
 def test_download_model_success(monkeypatch, tmp_path, caplog) -> None:
@@ -165,7 +221,11 @@ def test_download_model_bad_hash_is_removed(monkeypatch, tmp_path, caplog) -> No
     assert not model_file.exists()
 
 
-def test_download_existing_bad_hash_triggers_redownload(monkeypatch, tmp_path, caplog) -> None:
+def test_download_existing_bad_hash_triggers_redownload(
+    monkeypatch,
+    tmp_path,
+    caplog,
+) -> None:
     """Bad cached file should be removed and replaced by downloaded content."""
     model_dir = tmp_path / "cache"
     model_file = model_dir / MODEL_FILENAME
@@ -237,7 +297,10 @@ def test_download_uses_mirror_in_cn(monkeypatch, tmp_path, caplog) -> None:
     monkeypatch.setattr(
         cli,
         "_load_model_map",
-        lambda: _model_map_with_hash(hashlib.sha256(payload).hexdigest(), url=HF_MODEL_URL),
+        lambda: _model_map_with_hash(
+            hashlib.sha256(payload).hexdigest(),
+            url=HF_MODEL_URL,
+        ),
     )
 
     def fake_urlopen(url: str, timeout: int = 120) -> ResponseOK:
@@ -259,7 +322,10 @@ def test_download_uses_mirror_in_cn(monkeypatch, tmp_path, caplog) -> None:
     assert "using mirror" in caplog.text
 
 
-def test_download_country_check_failure_falls_back_to_origin(monkeypatch, tmp_path) -> None:
+def test_download_country_check_failure_falls_back_to_origin(
+    monkeypatch,
+    tmp_path,
+) -> None:
     """If country API fails, download should fall back to huggingface origin URL."""
     model_dir = tmp_path / "cache"
     payload = b"origin-model"
@@ -268,7 +334,10 @@ def test_download_country_check_failure_falls_back_to_origin(monkeypatch, tmp_pa
     monkeypatch.setattr(
         cli,
         "_load_model_map",
-        lambda: _model_map_with_hash(hashlib.sha256(payload).hexdigest(), url=HF_MODEL_URL),
+        lambda: _model_map_with_hash(
+            hashlib.sha256(payload).hexdigest(),
+            url=HF_MODEL_URL,
+        ),
     )
 
     def fake_urlopen(url: str, timeout: int = 120) -> ResponseOK:
