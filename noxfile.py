@@ -7,7 +7,7 @@ import nox
 
 @nox.session
 def tests(session: nox.Session) -> None:
-    """Run unit test suite with pytest."""
+    """Run full test suite (unit + DeepMD integration) with pytest."""
     session.install("-e.[test]")
     session.run(
         "pytest",
@@ -18,13 +18,4 @@ def tests(session: nox.Session) -> None:
         "term",
         "--cov-report",
         "xml",
-        "-k",
-        "not deepmd_integration",
     )
-
-
-@nox.session(name="tests-deepmd")
-def tests_deepmd(session: nox.Session) -> None:
-    """Run DeepMD integration smoke tests with real dependency stack."""
-    session.install("-e.[test,test-deepmd]")
-    session.run("pytest", "tests/test_deepmd_integration.py", "-q")

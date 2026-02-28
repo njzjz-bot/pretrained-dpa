@@ -43,8 +43,6 @@ repository = "https://github.com/njzjz/pretrained-dpa"  # Please revise this lin
 test = [
     'pytest',
     'pytest-cov',
-]
-test-deepmd = [
     'deepmd-kit==3.1.2',
 ]
 
