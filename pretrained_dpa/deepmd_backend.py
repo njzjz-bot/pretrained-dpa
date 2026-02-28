@@ -6,18 +6,16 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from deepmd.backend.backend import Backend  # type: ignore[import-not-found]
-from deepmd.infer.deep_eval import DeepEvalBackend  # type: ignore[import-not-found]
+from deepmd.backend.backend import Backend
+from deepmd.infer.deep_eval import DeepEvalBackend
 
 from .cli import resolve_model_path
 
 if TYPE_CHECKING:
     from argparse import Namespace
 
-    from deepmd.infer.deep_eval import DeepEval  # type: ignore[import-not-found]
-    from deepmd.utils.neighbor_stat import (
-        NeighborStat,  # type: ignore[import-not-found]
-    )
+    from deepmd.infer.deep_eval import DeepEval
+    from deepmd.utils.neighbor_stat import NeighborStat
 
 
 def parse_pretrained_alias(model_file: str) -> str:

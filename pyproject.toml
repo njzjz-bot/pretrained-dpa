@@ -100,3 +100,9 @@ required-imports = [
 
 [tool.coverage.report]
 include = ["pretrained_dpa/*"]  # Please revise this line.
+
+[tool.mypy]
+
+[[tool.mypy.overrides]]
+module = ["deepmd", "deepmd.*"]
+ignore_missing_imports = true
