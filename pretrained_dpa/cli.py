@@ -8,6 +8,7 @@ import json
 import logging
 import shutil
 import urllib.error
+import urllib.parse
 import urllib.request
 from importlib.resources import files
 from pathlib import Path
@@ -32,8 +33,17 @@ def _load_model_map() -> dict[str, dict[str, str]]:
     return data
 
 
+def _validate_download_url(url: str) -> None:
+    """Validate that download URL uses a permitted scheme."""
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https":
+        msg = f"Unsupported URL scheme for download: {parsed.scheme or '<empty>'}"
+        raise ValueError(msg)
+
+
 def _download_file(url: str, destination: Path) -> None:
     """Download URL content into destination atomically."""
+    _validate_download_url(url)
     destination.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = destination.with_suffix(destination.suffix + ".part")
 

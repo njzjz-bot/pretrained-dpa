@@ -156,6 +156,14 @@ def test_download_existing_model_skips_download(monkeypatch, tmp_path, caplog) -
     assert str(model_file) in caplog.text
 
 
+def test_download_file_rejects_non_https_scheme(tmp_path) -> None:
+    """Downloader should reject URLs that are not HTTPS."""
+    destination = tmp_path / "cache" / MODEL_FILENAME
+
+    with pytest.raises(ValueError, match="Unsupported URL scheme"):
+        cli._download_file("http://example.com/model.pt", destination)
+
+
 def test_download_model_success(monkeypatch, tmp_path, caplog) -> None:
     """Download command should write target file and report path."""
     model_dir = tmp_path / "cache"
