@@ -10,6 +10,7 @@
 
 ```bash
 pretrained-dpa download DPA-3.2-5M
+pretrained-dpa download DPA-3.1-3M
 ```
 
 This command will download the model file from Hugging Face to:
