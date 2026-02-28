@@ -41,7 +41,7 @@ def _download_file(url: str, destination: Path) -> None:
         with (
             urllib.request.urlopen(url, timeout=120) as response,
             tmp_path.open("wb") as out_file,
-        ):  # noqa: S310
+        ):
             shutil.copyfileobj(response, out_file)
     except Exception:
         tmp_path.unlink(missing_ok=True)
@@ -131,7 +131,8 @@ def download_model(model_name: str) -> int:
             return 0
 
         LOGGER.warning(
-            "Cached file for '%s' failed SHA256 check, re-downloading...", model_name
+            "Cached file for '%s' failed SHA256 check, re-downloading...",
+            model_name,
         )
         output_path.unlink(missing_ok=True)
 
@@ -166,7 +167,8 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     download_parser = subparsers.add_parser(
-        "download", help="Download a pretrained model"
+        "download",
+        help="Download a pretrained model",
     )
     download_parser.add_argument("model_name", help="Model name, e.g. DPA-3.2-5M")
 
