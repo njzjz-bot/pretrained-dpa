@@ -61,13 +61,8 @@ deepmd_backend = importlib.import_module("pretrained_dpa.deepmd_backend")
 
 def test_model_name_from_alias() -> None:
     """Valid alias should parse model name correctly."""
-    assert (
-        deepmd_backend.parse_pretrained_alias("DPA-3.2-5M.pretrained") == "DPA-3.2-5M"
-    )
-    assert (
-        deepmd_backend.parse_pretrained_alias("relative/DPA-3.2-5M.pretrained")
-        == "DPA-3.2-5M"
-    )
+    assert deepmd_backend.parse_pretrained_alias("DPA-3.2-5M.pretrained") == "DPA-3.2-5M"
+    assert deepmd_backend.parse_pretrained_alias("relative/DPA-3.2-5M.pretrained") == "DPA-3.2-5M"
 
 
 @pytest.mark.parametrize(
@@ -84,13 +79,12 @@ def test_model_name_from_alias_rejects_invalid(alias: str) -> None:
         deepmd_backend.parse_pretrained_alias(alias)
 
 
-def test_pretrained_deep_eval_backend_resolves_and_delegates(
-    monkeypatch,
-    tmp_path,
-) -> None:
-    """Backend should resolve alias and delegate all backend calls."""
+def test_pretrained_deep_eval_backend_resolves_and_delegates(monkeypatch, tmp_path) -> None:
+    """Backend adapter should resolve alias and delegate all backend calls."""
     resolved_model = tmp_path / "DPA-3.2-5M.pt"
     resolved_model.write_bytes(b"ok")
+
+    impl_module = importlib.import_module("pretrained_dpa.deepmd_backend_impl")
 
     calls: dict[str, object] = {}
 
@@ -160,32 +154,19 @@ def test_pretrained_deep_eval_backend_resolves_and_delegates(
         def get_model(self) -> object:
             return {"model": "x"}
 
-    def fake_delegate(
-        model_file: str,
-        output_def: object,
-        *args: object,
-        auto_batch_size: object = True,
-        neighbor_list: object = None,
-        **kwargs: object,
-    ) -> FakeDeepEvalImpl:
-        return FakeDeepEvalImpl(
-            model_file,
-            output_def,
-            *args,
-            auto_batch_size=auto_batch_size,
-            neighbor_list=neighbor_list,
-            **kwargs,
-        )
-
     monkeypatch.setattr(
         deepmd_backend,
-        "resolve_model_path",
-        lambda name: Path(resolved_model) if name == "DPA-3.2-5M" else Path("bad"),
+        "parse_pretrained_alias",
+        lambda _path: "DPA-3.2-5M",
     )
-    monkeypatch.setattr(deepmd_backend, "_delegate_deep_eval", fake_delegate)
+    monkeypatch.setattr(
+        impl_module,
+        "resolve_model_path",
+        lambda _name: Path(resolved_model),
+    )
+    monkeypatch.setattr(impl_module, "DeepEvalBackend", FakeDeepEvalImpl)
 
-    backend_cls = deepmd_backend._get_pretrained_deep_eval_backend()
-    backend = backend_cls(
+    backend = impl_module.PretrainedDeepEvalBackend(
         "DPA-3.2-5M.pretrained",
         {"od": "x"},
         "arg1",
@@ -219,13 +200,16 @@ def test_pretrained_deep_eval_backend_resolves_and_delegates(
     assert backend.get_model() == {"model": "x"}
 
 
-def test_pretrained_backend_interface_and_not_implemented() -> None:
+def test_pretrained_backend_interface_and_not_implemented(monkeypatch) -> None:
     """Pretrained backend should expose deep_eval and reject unsupported hooks."""
+    impl_module = importlib.import_module("pretrained_dpa.deepmd_backend_impl")
+    monkeypatch.setattr(impl_module, "PretrainedDeepEvalBackend", object)
+
     backend = deepmd_backend.PretrainedBackend()
 
     assert backend.is_available() is True
     assert backend.suffixes == [".pretrained"]
-    assert backend.deep_eval is deepmd_backend._get_pretrained_deep_eval_backend()
+    assert backend.deep_eval is object
 
     with pytest.raises(NotImplementedError, match="Entry point"):
         _ = backend.entry_point_hook

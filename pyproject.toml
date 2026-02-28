@@ -90,6 +90,10 @@ required-imports = [
     "D102",
     "PLC0415",
 ]
+"pretrained_dpa/deepmd_backend_impl.py" = [
+    "ANN401",
+    "D102",
+]
 "tests/**/*.py" = [
     "S101", # asserts allowed in tests...
     "ANN",
