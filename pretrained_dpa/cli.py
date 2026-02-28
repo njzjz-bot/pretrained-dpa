@@ -49,7 +49,7 @@ def _download_file(url: str, destination: Path) -> None:
 
     try:
         with (
-            urllib.request.urlopen(url, timeout=120) as response,
+            urllib.request.urlopen(url, timeout=120) as response,  # noqa: S310
             tmp_path.open("wb") as out_file,
         ):
             shutil.copyfileobj(response, out_file)

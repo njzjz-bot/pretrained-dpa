@@ -88,6 +88,7 @@ required-imports = [
 "pretrained_dpa/deepmd_backend.py" = [
     "ANN401",
     "D102",
+    "PLC0415",
 ]
 "tests/**/*.py" = [
     "S101", # asserts allowed in tests...
@@ -106,3 +107,7 @@ include = ["pretrained_dpa/*"]  # Please revise this line.
 [[tool.mypy.overrides]]
 module = ["deepmd", "deepmd.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["pretrained_dpa.deepmd_backend"]
+disable_error_code = ["attr-defined"]
