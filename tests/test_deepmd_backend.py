@@ -85,7 +85,8 @@ def test_model_name_from_alias_rejects_invalid(alias: str) -> None:
 
 
 def test_pretrained_deep_eval_backend_resolves_and_delegates(
-    monkeypatch, tmp_path
+    monkeypatch,
+    tmp_path,
 ) -> None:
     """Backend adapter should resolve alias and delegate all backend calls."""
     resolved_model = tmp_path / "DPA-3.2-5M.pt"
