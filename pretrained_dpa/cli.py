@@ -91,6 +91,11 @@ def _select_download_url(url: str) -> str:
     return url
 
 
+def _available_model_names() -> list[str]:
+    """Return available model names from packaged model registry."""
+    return sorted(_load_model_map())
+
+
 def resolve_model_path(model_name: str) -> Path:
     """Resolve model alias to a verified local file, downloading if needed."""
     configure_logging()
@@ -180,7 +185,11 @@ def build_parser() -> argparse.ArgumentParser:
         "download",
         help="Download a pretrained model",
     )
-    download_parser.add_argument("model_name", help="Model name, e.g. DPA-3.2-5M")
+    download_parser.add_argument(
+        "model_name",
+        choices=_available_model_names(),
+        help="Model name, e.g. DPA-3.2-5M",
+    )
 
     return parser
 

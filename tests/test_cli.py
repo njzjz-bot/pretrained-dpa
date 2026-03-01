@@ -80,6 +80,31 @@ def test_configure_logging_sets_info_level() -> None:
         root.setLevel(original_level)
 
 
+def test_parser_model_choices_from_registry(monkeypatch) -> None:
+    """Parser should constrain model_name choices from packaged registry."""
+    monkeypatch.setattr(
+        cli,
+        "_available_model_names",
+        lambda: ["DPA-3.1-3M", "DPA-3.2-5M"],
+    )
+
+    parser = cli.build_parser()
+    args = parser.parse_args(["download", "DPA-3.1-3M"])
+
+    assert args.model_name == "DPA-3.1-3M"
+
+
+def test_parser_rejects_unknown_choice(monkeypatch) -> None:
+    """Parser should reject model names outside choices list."""
+    monkeypatch.setattr(cli, "_available_model_names", lambda: ["DPA-3.2-5M"])
+
+    parser = cli.build_parser()
+    with pytest.raises(SystemExit) as exc:
+        parser.parse_args(["download", "NOT-EXIST"])
+
+    assert exc.value.code == 2
+
+
 def test_resolve_model_path_returns_existing_when_hash_matches(
     monkeypatch,
     tmp_path,
