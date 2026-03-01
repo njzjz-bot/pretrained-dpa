@@ -330,7 +330,9 @@ def test_download_tries_sources_in_ranked_order(monkeypatch, tmp_path, caplog) -
             urls=[MODEL_URL_1, MODEL_URL_2],
         ),
     )
-    monkeypatch.setattr(cli, "_rank_download_urls", lambda _urls: [MODEL_URL_1, MODEL_URL_2])
+    monkeypatch.setattr(
+        cli, "_rank_download_urls", lambda _urls: [MODEL_URL_1, MODEL_URL_2]
+    )
 
     attempted: list[str] = []
 
@@ -372,7 +374,9 @@ def test_download_bad_checksum_falls_back_to_next_source(
             urls=[MODEL_URL_1, MODEL_URL_2],
         ),
     )
-    monkeypatch.setattr(cli, "_rank_download_urls", lambda _urls: [MODEL_URL_1, MODEL_URL_2])
+    monkeypatch.setattr(
+        cli, "_rank_download_urls", lambda _urls: [MODEL_URL_1, MODEL_URL_2]
+    )
 
     def fake_download(url: str, destination: Path) -> None:
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -404,7 +408,9 @@ def test_download_all_sources_fail_returns_one(monkeypatch, tmp_path, caplog) ->
             urls=[MODEL_URL_1, MODEL_URL_2],
         ),
     )
-    monkeypatch.setattr(cli, "_rank_download_urls", lambda _urls: [MODEL_URL_1, MODEL_URL_2])
+    monkeypatch.setattr(
+        cli, "_rank_download_urls", lambda _urls: [MODEL_URL_1, MODEL_URL_2]
+    )
 
     def fake_download(_url: str, _destination: Path) -> None:
         msg = "unreachable"
