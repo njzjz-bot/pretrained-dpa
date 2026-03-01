@@ -331,7 +331,9 @@ def test_download_tries_sources_in_ranked_order(monkeypatch, tmp_path, caplog) -
         ),
     )
     monkeypatch.setattr(
-        cli, "_rank_download_urls", lambda _urls: [MODEL_URL_1, MODEL_URL_2]
+        cli,
+        "_rank_download_urls",
+        lambda _urls: [MODEL_URL_1, MODEL_URL_2],
     )
 
     attempted: list[str] = []
@@ -375,7 +377,9 @@ def test_download_bad_checksum_falls_back_to_next_source(
         ),
     )
     monkeypatch.setattr(
-        cli, "_rank_download_urls", lambda _urls: [MODEL_URL_1, MODEL_URL_2]
+        cli,
+        "_rank_download_urls",
+        lambda _urls: [MODEL_URL_1, MODEL_URL_2],
     )
 
     def fake_download(url: str, destination: Path) -> None:
@@ -409,7 +413,9 @@ def test_download_all_sources_fail_returns_one(monkeypatch, tmp_path, caplog) ->
         ),
     )
     monkeypatch.setattr(
-        cli, "_rank_download_urls", lambda _urls: [MODEL_URL_1, MODEL_URL_2]
+        cli,
+        "_rank_download_urls",
+        lambda _urls: [MODEL_URL_1, MODEL_URL_2],
     )
 
     def fake_download(_url: str, _destination: Path) -> None:
